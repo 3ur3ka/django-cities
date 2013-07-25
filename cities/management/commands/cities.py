@@ -317,7 +317,10 @@ class Command(BaseCommand):
 
             if not self.call_hook('city_post', city, items):
                 continue
-            city_list.append(city)
+
+            if not City.objects.filter(id=city.id).exists():
+                city_list.append(city)
+            
             self.logger.debug("Added city: {0}".format(city))
         City.objects.bulk_create(city_list)
 
@@ -396,7 +399,9 @@ class Command(BaseCommand):
                 continue
 
             self.logger.debug("Added district: {0}".format(district))
-            district_list.append(district)
+
+            if not District.objects.filter(id=district.id).exists():
+                district_list.append(district)
 
         District.objects.bulk_create(district_list)
 
