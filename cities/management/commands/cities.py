@@ -92,7 +92,7 @@ class Command(BaseCommand):
                 continue
         else:
             self.logger.error("Web file not found: {0}. Tried URLs:\n{1}".format(filename, '\n'.join(urls)))
-            
+
         uptodate = False
         filepath = os.path.join(self.data_dir, filename)
         if web_file is not None:
@@ -107,19 +107,19 @@ class Command(BaseCommand):
         else:
             self.logger.warning("Assuming file is up-to-date")
             uptodate = True
-            
+
         if not uptodate and web_file is not None:
             self.logger.info("Downloading: " + filename)
             if not os.path.exists(self.data_dir):
                 os.makedirs(self.data_dir)
-            file = open(os.path.join(self.data_dir, filename), 'wb')
-            file.write(web_file.read())
-            file.close()
+            data_file = open(os.path.join(self.data_dir, filename), 'wb')
+            data_file.write(web_file.read())
+            data_file.close()
         elif not os.path.exists(filepath):
             raise Exception("File not found and download failed: " + filename)
-            
+
         return uptodate
-    
+
     def download_once(self, filekey):
         if filekey in self.download_cache: return self.download_cache[filekey]
         uptodate = self.download_cache[filekey] = self.download(filekey)
@@ -127,15 +127,15 @@ class Command(BaseCommand):
 
     def get_data(self, filekey):
         filename = settings.files[filekey]['filename']
-        file = open(os.path.join(self.data_dir, filename), 'rb')
+        data_file = open(os.path.join(self.data_dir, filename), 'rb')
         name, ext = filename.rsplit('.',1)
         if (ext == 'zip'):
-            zip = zipfile.ZipFile(file)
-            data = zip.read(name + '.txt').split('\n')
-            zip.close()
+            zip_file = zipfile.ZipFile(data_file)
+            data = zip_file.read(name + '.txt').split('\n')
+            zip_file.close()
         else:
-            data = file.read().split('\n')
-        file.close()
+            data = data_file.read().split('\n')
+        data_file.close()
         return data
 
     def parse(self, data):
@@ -148,11 +148,11 @@ class Command(BaseCommand):
         uptodate = self.download('country')
         if uptodate and not self.force: return
         data = self.get_data('country')
-        
+
         self.logger.info("Importing country data")
         for items in self.parse(data):
             if not self.call_hook('country_pre', items): continue
-            
+
             country = Country()
             try: country.id = int(items[16])
             except: continue
@@ -162,11 +162,11 @@ class Command(BaseCommand):
             country.population = items[7]
             country.continent = items[8]
             country.tld = items[9][1:] # strip the leading .
-            
-            if not self.call_hook('country_post', country, items): continue 
+
+            if not self.call_hook('country_post', country, items): continue
             country.save()
             self.logger.debug("Added country: {0}, {1}".format(country.code, country))
-        
+
     def import_region_common(self, region, items):
         class_ = region.__class__
         region.id = int(items[3])
@@ -174,65 +174,74 @@ class Command(BaseCommand):
         region.name_std = items[1]
         region.slug = slugify(region.name)
         region.code = items[0]
-        
+
         # Find country
         country_code = region.code.split('.')[0]
         try: region.country = self.country_index[country_code]
         except:
             self.logger.warning("{0}: {1}: Cannot find country: {2} -- skipping".format(class_.__name__, region.name, country_code))
             return None
-            
+
         return region
-    
+
     def build_country_index(self):
-        if hasattr(self, 'country_index'): return
-        
+        if hasattr(self, 'country_index'):
+            return
+
         self.logger.info("Building country index")
         self.country_index = {}
         for obj in Country.objects.all():
             self.country_index[obj.code] = obj
-            
+
     def import_region(self):
         uptodate = self.download('region')
-        if uptodate and not self.force: return
+        if uptodate and not self.force:
+            return
         data = self.get_data('region')
-        
+
         self.build_country_index()
-                
+
         self.logger.info("Importing region data")
         for items in self.parse(data):
-            if not self.call_hook('region_pre', items): continue
-            
+            if not self.call_hook('region_pre', items):
+                continue
+
             region = self.import_region_common(Region(), items)
-            if not region: continue
-            
-            if not self.call_hook('region_post', region, items): continue
+            if not region:
+                continue
+
+            if not self.call_hook('region_post', region, items):
+                continue
             region.save()
             self.logger.debug("Added region: {0}, {1}".format(region.code, region))
-        
+
     def build_region_index(self):
-        if hasattr(self, 'region_index'): return
-        
+        if hasattr(self, 'region_index'):
+            return
+
         self.logger.info("Building region index")
         self.region_index = {}
         for obj in chain(Region.objects.all(), Subregion.objects.all()):
             self.region_index[obj.code] = obj
-            
+
     def import_subregion(self):
         uptodate = self.download('subregion')
-        if uptodate and not self.force: return
+        if uptodate and not self.force:
+            return
         data = self.get_data('subregion')
-        
+
         self.build_country_index()
         self.build_region_index()
-                
+
         self.logger.info("Importing subregion data")
         for items in self.parse(data):
-            if not self.call_hook('subregion_pre', items): continue
-            
+            if not self.call_hook('subregion_pre', items):
+                continue
+
             subregion = self.import_region_common(Subregion(), items)
-            if not subregion: continue
-            
+            if not subregion:
+                continue
+
             # Find region
             level = Region.levels.index("subregion") - 1
             region_code = '.'.join(subregion.code.split('.')[:level+2])
@@ -240,13 +249,14 @@ class Command(BaseCommand):
             except:
                 self.logger.warning("Subregion: {0}: Cannot find region: {1}".format(subregion.name, region_code))
                 continue
-                
-            if not self.call_hook('subregion_post', subregion, items): continue
+
+            if not self.call_hook('subregion_post', subregion, items):
+                continue
             subregion.save()
             self.logger.debug("Added subregion: {0}, {1}".format(subregion.code, subregion))
-            
+
         del self.region_index
-        
+
     def import_city_common(self, city, items):
         class_ = city.__class__
         city.id = int(items[0])
@@ -259,16 +269,18 @@ class Command(BaseCommand):
         # Find country
         country = None
         country_code = items[8]
-        try: country = self.country_index[country_code]
+        try:
+            country = self.country_index[country_code]
         except:
             self.logger.warning("{0}: {1}: Cannot find country: {2} -- skipping".format(class_.__name__, city.name, country_code))
             return None
         if class_ is City: city.country = country
-        
+
         # Find region, search highest level first
         item_offset = 10
         for level, level_name in reversed(list(enumerate(Region.levels))):
-            if not items[item_offset+level]: continue
+            if not items[item_offset+level]:
+                continue
             try:
                 code = '.'.join([country_code] + [items[item_offset+i] for i in range(level+1)])
                 region = self.region_index[code]
@@ -277,77 +289,89 @@ class Command(BaseCommand):
             except:
                 self.logger.log(logging.DEBUG if level else logging.WARNING, # Escalate if level 0 failed
                                 "{0}: {1}: Cannot find {2}: {3}".format(class_.__name__, city.name, level_name, code))
-        
-        
+
+
         return city
-            
-    def import_city(self):            
+
+    def import_city(self):
         uptodate = self.download_once('city')
-        if uptodate and not self.force: return
+        if uptodate and not self.force:
+            return
         data = self.get_data('city')
-        
+
         self.build_country_index()
         self.build_region_index()
 
         self.logger.info("Importing city data")
+        city_list = []
         for items in self.parse(data):
-            if not self.call_hook('city_pre', items): continue
-            
-            type = items[7]
-            if type not in city_types: continue
-            
+            if not self.call_hook('city_pre', items):
+                continue
+
+            city_type = items[7]
+            if city_type not in city_types:
+                continue
+
             city = self.import_city_common(City(), items)
             if not city: continue
-            
-            if not self.call_hook('city_post', city, items): continue
-            city.save()
+
+            if not self.call_hook('city_post', city, items):
+                continue
+            city_list.append(city)
             self.logger.debug("Added city: {0}".format(city))
-        
+        City.objects.bulk_create(city_list)
+
     def build_hierarchy(self):
-        if hasattr(self, 'hierarchy'): return
-        
+        if hasattr(self, 'hierarchy'):
+            return
+
         self.download('hierarchy')
         data = self.get_data('hierarchy')
-        
+
         self.logger.info("Building hierarchy index")
         self.hierarchy = {}
         for items in self.parse(data):
             parent_id = int(items[0])
             child_id = int(items[1])
             self.hierarchy[child_id] = parent_id
-            
+
     def import_district(self):
         uptodate = self.download_once('city')
-        if uptodate and not self.force: return
+        if uptodate and not self.force:
+            return
         data = self.get_data('city')
-        
+
         self.build_country_index()
         self.build_region_index()
         self.build_hierarchy()
-            
+
         self.logger.info("Building city index")
         city_index = {}
         for obj in City.objects.all():
             city_index[obj.id] = obj
-            
+
         self.logger.info("Importing district data")
+        district_list = []
         for items in self.parse(data):
-            if not self.call_hook('district_pre', items): continue
-            
-            type = items[7]
-            if type not in district_types: continue
-            
+            if not self.call_hook('district_pre', items):
+                continue
+
+            district_type = items[7]
+            if district_type not in district_types:
+                continue
+
             district = self.import_city_common(District(), items)
-            if not district: continue
-            
+            if not district:
+                continue
+
             # Find city
             city = None
             try: city = city_index[self.hierarchy[district.id]]
             except:
                 self.logger.warning("District: {0}: Cannot find city in hierarchy, using nearest".format(district.name))
-                city_pop_min = 100000
+                city_pop_min = 20000
                 # we are going to try to find closet city using native database .distance(...) query but if that fails
-                # then we fall back to degree search, MYSQL has no support and Spatialite with SRID 4236. 
+                # then we fall back to degree search, MYSQL has no support and Spatialite with SRID 4236.
                 try:
                     city = City.objects.filter(population__gt=city_pop_min).distance(district.location).order_by('distance')[0]
                 except:
@@ -362,21 +386,25 @@ class Command(BaseCommand):
                         if dist < min_dist:
                             min_dist = dist
                             city = e
-                    
+
             if not city:
                 self.logger.warning("District: {0}: Cannot find city -- skipping".format(district.name))
                 continue
             district.city = city
-            
-            if not self.call_hook('district_post', district, items): continue
-            district.save()
+
+            if not self.call_hook('district_post', district, items):
+                continue
+
             self.logger.debug("Added district: {0}".format(district))
-        
+            district_list.append(district)
+
+        District.objects.bulk_create(district_list)
+
     def import_alt_name(self):
         uptodate = self.download('alt_name')
         if uptodate and not self.force: return
         data = self.get_data('alt_name')
-        
+
         self.logger.info("Building geo index")
         geo_index = {}
         for type_ in geo_alt_names:
@@ -385,21 +413,21 @@ class Command(BaseCommand):
                     'type': type_,
                     'object': obj,
                 }
-        
+
         self.logger.info("Importing alternate name data")
         for items in self.parse(data):
             if not self.call_hook('alt_name_pre', items): continue
-            
+
             # Only get names for languages in use
             locale = items[2]
             if not locale: locale = 'und'
             if not locale in settings.locales: continue
-            
+
             # Check if known geo id
             geo_id = int(items[1])
             try: geo_info = geo_index[geo_id]
             except: continue
-            
+
             alt_type = geo_alt_names[geo_info['type']][locale]
             alt = alt_type()
             alt.id = int(items[0])
@@ -460,27 +488,27 @@ class Command(BaseCommand):
     def flush_country(self):
         self.logger.info("Flushing country data")
         Country.objects.all().delete()
-        
+
     def flush_region(self):
         self.logger.info("Flushing region data")
         Region.objects.all().delete()
-        
+
     def flush_subregion(self):
         self.logger.info("Flushing subregion data")
         Subregion.objects.all().delete()
-        
+
     def flush_city(self):
         self.logger.info("Flushing city data")
         City.objects.all().delete()
-    
+
     def flush_district(self):
         self.logger.info("Flushing district data")
         District.objects.all().delete()
-    
+
     def flush_alt_name(self):
         self.logger.info("Flushing alternate name data")
         [geo_alt_name.objects.all().delete() for locales in geo_alt_names.values() for geo_alt_name in locales.values()]
-        
+
     def flush_postal_code(self):
         self.logger.info("Flushing postal code data")
         [postal_code.objects.all().delete() for postal_code in postal_codes.values()]
