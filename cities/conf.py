@@ -63,7 +63,7 @@ country_codes = [
 
 # See http://www.geonames.org/export/codes.html
 city_types = ['PPL','PPLA','PPLC','PPLA2','PPLA3','PPLA4', 'PPLG']
-district_types = ['PPLX']
+district_types = ['PPLX', 'ADM2', 'ADM3']
 
 # Command-line import options
 import_opts = [
