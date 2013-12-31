@@ -2,7 +2,7 @@ from django.contrib import admin
 from models import *
 
 class CountryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'code', 'tld', 'population']
+    list_display = ['name', 'code', 'currency', 'tld', 'population']
     search_fields = ['name', 'code', 'tld']
 
 admin.site.register(Country, CountryAdmin)

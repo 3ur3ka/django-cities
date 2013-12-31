@@ -532,7 +532,8 @@ class Command(BaseCommand):
             lang_name = items[3]
             
             if lang_iso_639_1 != 'ISO 639-1' and lang_iso_639_1 != '':
-                print 'iso_639_1: ' + lang_iso_639_1 + '    name: ' + lang_name;
+                #print 'iso_639_1: ' + lang_iso_639_1 + '    name: ' + lang_name;
+                print "'" + lang_iso_639_1 + "'" + ',',
                 lang_objects.append(Language(iso_639_1=lang_iso_639_1,
                                             name=lang_name))
 
