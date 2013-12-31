@@ -29,6 +29,10 @@ INSTALLED_APPS = (
 
 Then run ```./manage.py syncdb``` to create the required database tables, and ```./manage.py cities --import=all``` to import all of the place data. **NOTE:** This can take a long time.
 
+EDIT: In this fork the Language features from django-geonames have been added, and also a Currency field (djmoney) has been included in the Country model.
+In order to import the language codes, after syncdb, run ./manage.py cities --import=language_code, then do ./manage.py cities --import=all (Should be able to add this in the conf.py so that only need to --import=all, but not sure why that doesn't work, and don't have time right now)
+
+
 ### Configuration
 
 There are various optional configuration options you can set in your ```settings.py```:
