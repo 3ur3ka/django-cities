@@ -42,6 +42,10 @@ files = {
     'postal_code':  {
         'filename': 'allCountries.zip',
         'urls':     [url_bases['geonames']['zip']+'{filename}', ]
+    },
+    'language_code':  {
+        'filename': 'iso-languagecodes.txt',
+        'urls':     [url_bases['geonames']['dump']+'{filename}', ]
     }
 }
 
@@ -75,9 +79,11 @@ import_opts = [
     'district',
     'alt_name',
     'postal_code',
+    'language_code',
 ]
 
 import_opts_all = [
+    #'language_code',
     'country',
     'region',
     'subregion',
@@ -85,6 +91,7 @@ import_opts_all = [
     'district',
     'alt_name',
     'postal_code',
+
 ]
 
 # Raise inside a hook (with an error message) to skip the current line of data.

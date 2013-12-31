@@ -29,6 +29,8 @@ from ...conf import *
 from ...models import *
 from ...util import geo_distance
 
+from ...models import Language
+
 class Command(BaseCommand):
     app_dir = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + '/../..')
     data_dir = os.path.join(app_dir, 'data')
@@ -149,6 +151,7 @@ class Command(BaseCommand):
         if uptodate and not self.force: return
         data = self.get_data('country')
 
+        langs_dic = {}
         self.logger.info("Importing country data")
         for items in self.parse(data):
             if not self.call_hook('country_pre', items): continue
@@ -162,10 +165,32 @@ class Command(BaseCommand):
             country.population = items[7]
             country.continent = items[8]
             country.tld = items[9][1:] # strip the leading .
+            
+            country.currency = items[10]
+
+            langs_dic[country.code] = items[15]
 
             if not self.call_hook('country_post', country, items): continue
             country.save()
-            self.logger.debug("Added country: {0}, {1}".format(country.code, country))
+            self.logger.info("Added country: {0}, {1} with currency {2}".format(country.code, country, country.currency))
+
+        self.logger.info("{0:8d} Countries loaded".format(Country.objects.all().count()))
+        self.logger.info("Adding Languages to Countries")
+
+        default_lang = Language.objects.get(iso_639_1='en')
+        for country in Country.objects.all():
+            for code in langs_dic[country.code].split(','):
+                iso_639_1 = code.split("-")[0]
+                if len(iso_639_1) < 2:
+                    continue
+        
+                languages = Language.objects.filter(iso_639_1=iso_639_1)
+                if languages.count() == 1:
+                    self.logger.info("Added language: {0} to {1}".format(languages[0], country))
+                    country.languages.add(languages[0])
+    
+            if country.languages.count() == 0:
+                country.languages.add(default_lang)
 
     def import_region_common(self, region, items):
         class_ = region.__class__
@@ -289,7 +314,6 @@ class Command(BaseCommand):
             except:
                 self.logger.log(logging.DEBUG if level else logging.WARNING, # Escalate if level 0 failed
                                 "{0}: {1}: Cannot find {2}: {3}".format(class_.__name__, city.name, level_name, code))
-
 
         return city
 
@@ -489,6 +513,49 @@ class Command(BaseCommand):
                 pc.save()
             except Exception, e:
                 print e
+
+
+    def import_language_code(self):
+        uptodate = self.download('language_code')
+        if uptodate and not self.force: return
+        data = self.get_data('language_code')
+        
+        #self.build_country_index()
+        #self.build_region_index()
+        
+        self.logger.info("Importing language codes")
+        
+        lang_objects = []
+        print 'Loading Languages'
+        for items in self.parse(data):
+            lang_iso_639_1 = items[2]
+            lang_name = items[3]
+            
+            if lang_iso_639_1 != 'ISO 639-1' and lang_iso_639_1 != '':
+                print 'iso_639_1: ' + lang_iso_639_1 + '    name: ' + lang_name;
+                lang_objects.append(Language(iso_639_1=lang_iso_639_1,
+                                            name=lang_name))
+
+        Language.objects.bulk_create(lang_objects)
+        for o in lang_objects:
+            Language.objects.get_or_create(name=o.name)
+        print '{0:8d} Languages loaded'.format(Language.objects.all().count())
+        self.fix_languagecodes()
+
+    def fix_languagecodes(self):
+        print 'Fixing Language codes'
+        # Corrections
+        Language.objects.filter(iso_639_1='km').update(name='Khmer')
+        Language.objects.filter(iso_639_1='ia').update(name='Interlingua')
+        Language.objects.filter(iso_639_1='ms').update(name='Malay')
+        Language.objects.filter(iso_639_1='el').update(name='Greek')
+        Language.objects.filter(iso_639_1='se').update(name='Sami')
+        Language.objects.filter(iso_639_1='oc').update(name='Occitan')
+        Language.objects.filter(iso_639_1='st').update(name='Sotho')
+        Language.objects.filter(iso_639_1='sw').update(name='Swahili')
+        Language.objects.filter(iso_639_1='to').update(name='Tonga')
+        Language.objects.filter(iso_639_1='fy').update(name='Frisian')
+
 
     def flush_country(self):
         self.logger.info("Flushing country data")

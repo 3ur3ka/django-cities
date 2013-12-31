@@ -4,10 +4,22 @@ from django.contrib.gis.geos import Point
 from conf import settings
 from util import create_model, un_camel
 
+from djmoney.models.fields import CurrencyField
+
 __all__ = [
         'Point', 'Country', 'Region', 'Subregion',
         'City', 'District', 'PostalCode', 'geo_alt_names', 
 ]
+
+class Language(models.Model):
+    name = models.CharField(max_length=200, primary_key=True)
+    iso_639_1 = models.CharField(max_length=50, blank=True)
+    
+    class Meta:
+        ordering = ['name']
+    
+    def __unicode__(self):
+        return u"[{}] {}".format(self.iso_639_1, self.name)
 
 class Place(models.Model):
     name = models.CharField(max_length=200, db_index=True, verbose_name="ascii name")
@@ -33,6 +45,8 @@ class Country(Place):
     population = models.IntegerField()
     continent = models.CharField(max_length=2)
     tld = models.CharField(max_length=5)
+    languages = models.ManyToManyField(Language, related_name="countries")
+    currency = CurrencyField()
 
     class Meta:
         ordering = ['name']
