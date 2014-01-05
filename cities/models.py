@@ -1,4 +1,4 @@
-from django.utils.encoding import force_unicode
+from django.utils.encoding import force_text
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
 from conf import settings
