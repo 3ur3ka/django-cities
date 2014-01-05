@@ -134,7 +134,8 @@ class Command(BaseCommand):
         name, ext = filename.rsplit('.',1)
         if (ext == 'zip'):
             zip_file = zipfile.ZipFile(data_file)
-            data = zip_file.read(name + '.txt').split('\n')
+            data = zip_file.read(name + '.txt').decode("utf-8")
+            data = data.split('\n')
             zip_file.close()
         else:
             data = data_file.read().decode("utf-8") 
