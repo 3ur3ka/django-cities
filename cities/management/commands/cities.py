@@ -15,7 +15,7 @@ http://download.geonames.org/export/zip/
 """
 
 import os
-import urllib
+from urllib.request import urlopen
 import logging
 import zipfile
 import time
@@ -30,6 +30,7 @@ from ...models import *
 from ...util import geo_distance
 
 from ...models import Language
+import sys
 
 class Command(BaseCommand):
     app_dir = os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + '/../..')
@@ -86,7 +87,7 @@ class Command(BaseCommand):
         urls = [e.format(filename=filename) for e in settings.files[filekey]['urls']]
         for url in urls:
             try:
-                web_file = urllib.urlopen(url)
+                web_file = urlopen(url)
                 if 'html' in web_file.headers['content-type']: raise Exception()
                 break
             except:
@@ -136,7 +137,8 @@ class Command(BaseCommand):
             data = zip_file.read(name + '.txt').split('\n')
             zip_file.close()
         else:
-            data = data_file.read().split('\n')
+            data = data_file.read().decode("utf-8") 
+            data = data.split('\n')
         data_file.close()
         return data
 
@@ -511,8 +513,8 @@ class Command(BaseCommand):
             self.logger.debug("Adding postal code: {0}, {1}".format(pc.country, pc))
             try:
                 pc.save()
-            except Exception, e:
-                print e
+            except Exception:
+                print("Error:", sys.exc_info()[0])
 
 
     def import_language_code(self):
@@ -526,25 +528,25 @@ class Command(BaseCommand):
         self.logger.info("Importing language codes")
         
         lang_objects = []
-        print 'Loading Languages'
+        print('Loading Languages')
         for items in self.parse(data):
             lang_iso_639_1 = items[2]
             lang_name = items[3]
             
             if lang_iso_639_1 != 'ISO 639-1' and lang_iso_639_1 != '':
                 #print 'iso_639_1: ' + lang_iso_639_1 + '    name: ' + lang_name;
-                print "'" + lang_iso_639_1 + "'" + ',',
+                print("'" + lang_iso_639_1 + "'" + ',',)
                 lang_objects.append(Language(iso_639_1=lang_iso_639_1,
                                             name=lang_name))
 
         Language.objects.bulk_create(lang_objects)
         for o in lang_objects:
             Language.objects.get_or_create(name=o.name)
-        print '{0:8d} Languages loaded'.format(Language.objects.all().count())
+        print('{0:8d} Languages loaded'.format(Language.objects.all().count()))
         self.fix_languagecodes()
 
     def fix_languagecodes(self):
-        print 'Fixing Language codes'
+        print('Fixing Language codes')
         # Corrections
         Language.objects.filter(iso_639_1='km').update(name='Khmer')
         Language.objects.filter(iso_639_1='ia').update(name='Interlingua')

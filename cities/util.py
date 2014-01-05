@@ -38,7 +38,7 @@ def create_model(name, fields=None, app_label='', module='', options=None, admin
 
     # Update Meta with any options that were provided
     if options is not None:
-        for key, value in options.iteritems():
+        for key, value in options.items():
             setattr(Meta, key, value)
 
     # Set up a dictionary to simulate declarations within a class
